@@ -6,6 +6,7 @@ import time
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, scrolledtext
 from pydub.utils import mediainfo
+from plyer import notification
 
 # Настройки окна
 ctk.set_appearance_mode("dark")  # Тёмная тема
@@ -15,7 +16,7 @@ class WhisperGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Whisper GUI")
-        self.geometry("700x700")
+        self.geometry("800x800")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Переменные состояния
@@ -30,6 +31,7 @@ class WhisperGUI(ctk.CTk):
         self.output_dir = os.getcwd()
         self.output_formats = ["txt", "srt"]
         self.overwrite_existing = ctk.BooleanVar(value=False)
+        self.enable_sound_notifications = ctk.BooleanVar(value=True)
         self.start_time = 0
 
         self.create_widgets()
@@ -64,7 +66,7 @@ class WhisperGUI(ctk.CTk):
         self.model_menu.pack(pady=5)
 
         ctk.CTkLabel(self, text="Язык:").pack()
-        self.language_menu = ctk.CTkOptionMenu(self, values=["Russian", "English"], variable=self.language_var)
+        self.language_menu = ctk.CTkOptionMenu(self, values=["Russian", "English", "Auto"], variable=self.language_var)
         self.language_menu.pack(pady=5)
 
         # Выбор папки для сохранения
@@ -74,6 +76,14 @@ class WhisperGUI(ctk.CTk):
         # Чекбокс для перезаписи существующих файлов
         self.overwrite_checkbox = ctk.CTkCheckBox(self, text="Перезаписывать уже распознанные файлы", variable=self.overwrite_existing)
         self.overwrite_checkbox.pack(pady=10)
+
+        # Настройки звуковых уведомлений
+        self.sound_checkbox = ctk.CTkCheckBox(self, text="Включить звук уведомлений", variable=self.enable_sound_notifications)
+        self.sound_checkbox.pack(pady=10)
+
+        # Переключение темы
+        self.theme_switch = ctk.CTkSwitch(self, text="Тёмная тема", command=self.toggle_theme)
+        self.theme_switch.pack(pady=5)
 
         # Поле логов
         self.log_text = scrolledtext.ScrolledText(self, wrap='word', width=80, height=10, state='disabled')
@@ -92,6 +102,7 @@ class WhisperGUI(ctk.CTk):
         if files:
             self.selected_files = list(files)
             self.file_label.configure(text=f"Выбрано файлов: {len(self.selected_files)}")
+            self.current_file_var.set(f"Текущий файл: {os.path.basename(self.selected_files[0])}")
             self.process_button.configure(state="normal")
 
     def select_folder(self):
@@ -100,57 +111,19 @@ class WhisperGUI(ctk.CTk):
             self.output_dir = folder
             self.log(f"📁 Папка для сохранения: {self.output_dir}")
 
-    def process_files(self):
-        if not self.selected_files:
-            messagebox.showerror("Ошибка", "Сначала выберите файлы!")
-            return
+    def toggle_theme(self):
+        mode = "dark" if self.theme_switch.get() else "light"
+        ctk.set_appearance_mode(mode)
 
-        self.start_time = time.time()
-        self.process_button.configure(state="disabled")
-        self.estimated_time_var.set("⏳ Запуск процесса...")
-        threading.Thread(target=self.run_whisper, daemon=True).start()
-
-    def run_whisper(self):
-        for file_path in self.selected_files:
-            file_name = os.path.splitext(os.path.basename(file_path))[0]
-            self.current_file_var.set(f"Текущий файл: {file_name}")
-            self.log(f"🟢 Обработка файла: {file_name}")
-
-            whisper_args = ["whisper", file_path, "--model", self.model_var.get(), "--language", self.language_var.get(), "--output_dir", self.output_dir]
-            self.log(f"Запуск команды: {' '.join(whisper_args)}")
-
-            self.whisper_process = subprocess.Popen(
-                whisper_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    def show_notification(self, title, message):
+        if self.enable_sound_notifications.get():
+            notification.notify(
+                title=title,
+                message=message,
+                app_name="Whisper GUI",
+                timeout=5
             )
-
-            for line in iter(self.whisper_process.stdout.readline, ''):
-                match = re.search(r"(\d{2}:\d{2}:\d{2},\d{3})", line)
-                if match:
-                    time_str = match.group(1)
-                    current_time = self.time_to_seconds(time_str)
-                    progress = min((current_time / self.duration), 1)
-                    self.progress_var.set(progress)
-                    self.update_idletasks()
-
-            self.estimated_time_var.set(f"✅ Готово: {file_name}")
-            self.log(f"✅ Сохранено в: {self.output_dir}")
-
-        total_time = time.time() - self.start_time
-        messagebox.showinfo("Готово!", f"Все файлы успешно обработаны.\nОбщее время выполнения: {self.format_time(total_time)}")
-        self.process_button.configure(state="normal")
-
-    def time_to_seconds(self, time_str: str) -> float:
-        match = re.search(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", time_str)
-        if match:
-            h, m, s, ms = match.groups()
-            return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
-        self.log(f"❌ Некорректный формат времени: {time_str}")
-        return 0
-
-    def format_time(self, seconds: float) -> str:
-        minutes, seconds = divmod(int(seconds), 60)
-        hours, minutes = divmod(minutes, 60)
-        return f"{hours:02}:{minutes:02}:{seconds:02}"
+        self.estimated_time_var.set(f"✅ {message}")
 
     def on_close(self):
         if self.whisper_process and self.whisper_process.poll() is None:
