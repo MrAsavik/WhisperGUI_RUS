@@ -7,17 +7,6 @@ import time
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, scrolledtext
 from pydub.utils import mediainfo
-from plyer import notification
-
-# Проверка, что виртуальное окружение активно
-if not hasattr(sys, 'real_prefix') and not (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
-    print("⚠️ Пожалуйста, запустите приложение через виртуальное окружение!")
-    sys.exit(1)
-
-# Явно добавляем путь к виртуальному окружению
-venv_path = r"D:\python_envs\whisper_env\Lib\site-packages"
-if venv_path not in sys.path:
-    sys.path.insert(0, venv_path)
 
 # Настройки окна
 ctk.set_appearance_mode("dark")  # Тёмная тема
@@ -42,7 +31,6 @@ class WhisperGUI(ctk.CTk):
         self.output_dir = os.getcwd()
         self.output_formats = ["txt", "srt"]
         self.overwrite_existing = ctk.BooleanVar(value=False)
-        self.enable_sound_notifications = ctk.BooleanVar(value=True)
         self.start_time = 0
 
         self.create_widgets()
@@ -87,10 +75,6 @@ class WhisperGUI(ctk.CTk):
         self.overwrite_checkbox = ctk.CTkCheckBox(self, text="Перезаписывать уже распознанные файлы", variable=self.overwrite_existing)
         self.overwrite_checkbox.pack(pady=10)
 
-        # Настройки звуковых уведомлений
-        self.sound_checkbox = ctk.CTkCheckBox(self, text="Включить звук уведомлений", variable=self.enable_sound_notifications)
-        self.sound_checkbox.pack(pady=10)
-
         # Переключение темы
         self.theme_switch = ctk.CTkSwitch(self, text="Тёмная тема", command=self.toggle_theme)
         self.theme_switch.pack(pady=5)
@@ -124,16 +108,6 @@ class WhisperGUI(ctk.CTk):
     def toggle_theme(self):
         mode = "dark" if self.theme_switch.get() else "light"
         ctk.set_appearance_mode(mode)
-
-    def show_notification(self, title, message):
-        if self.enable_sound_notifications.get():
-            notification.notify(
-                title=title,
-                message=message,
-                app_name="Whisper GUI",
-                timeout=5
-            )
-        self.estimated_time_var.set(f"✅ {message}")
 
     def on_close(self):
         if self.whisper_process and self.whisper_process.poll() is None:
