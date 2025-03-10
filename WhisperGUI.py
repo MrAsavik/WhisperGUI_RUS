@@ -1,12 +1,23 @@
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, scrolledtext
 from pydub.utils import mediainfo
 from plyer import notification
+
+# Проверка, что виртуальное окружение активно
+if not hasattr(sys, 'real_prefix') and not (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+    print("⚠️ Пожалуйста, запустите приложение через виртуальное окружение!")
+    sys.exit(1)
+
+# Явно добавляем путь к виртуальному окружению
+venv_path = r"D:\python_envs\whisper_env\Lib\site-packages"
+if venv_path not in sys.path:
+    sys.path.insert(0, venv_path)
 
 # Настройки окна
 ctk.set_appearance_mode("dark")  # Тёмная тема
@@ -35,7 +46,6 @@ class WhisperGUI(ctk.CTk):
         self.start_time = 0
 
         self.create_widgets()
-
     def create_widgets(self):
         # Выбор файлов
         self.file_label = ctk.CTkLabel(self, text="Файлы не выбраны")
