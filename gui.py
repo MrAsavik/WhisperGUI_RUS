@@ -3,6 +3,8 @@ import threading
 from tkinter import filedialog, scrolledtext
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
+import os
+
 
 
 class WhisperGUI(ctk.CTk):
@@ -74,22 +76,32 @@ class WhisperGUI(ctk.CTk):
 
         ctk.CTkButton(self.settings_tab, text="Выбрать папку для сохранения", command=self.select_folder).pack(pady=10)
 
+
+
     def select_files(self):
-        """Выбор файлов через диалоговое окно."""
+        """Выбор файлов через диалоговое окно — накапливает выбор."""
         files = filedialog.askopenfilenames(
             filetypes=[("Аудио и видео", "*.wav *.mp3 *.mp4 *.mkv *.m4a *.aac *.ogg")]
         )
         if files:
-            self.selected_files = list(files)
+            new_files = list(files)
+            added = 0
+            for f in new_files:
+                if f not in self.selected_files:
+                    self.selected_files.append(f)
+                    added += 1
             self.file_label.configure(text=f"Выбрано файлов: {len(self.selected_files)}")
             self.process_button.configure(state="normal")
-
+            self.log(f"📌 Добавлено файлов: {added}")
+            for path in new_files:
+                self.log(f"  ➤ {os.path.basename(path)} ({os.path.dirname(path)})")
     def select_folder(self):
-        """Выбор папки сохранения."""
+        """Выбор папки сохранения (если ты захочешь вручную задать её)."""
         folder = filedialog.askdirectory()
         if folder:
             self.output_dir = folder
-            self.log(f"📁 Папка сохранения: {folder}")
+            self.log(f"📁 Папка сохранения вручную выбрана: {self.output_dir}")
+
 
     def process_files(self):
         """Запускает обработку файлов в отдельном потоке."""
