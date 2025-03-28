@@ -3,7 +3,7 @@ from config import DEFAULT_MODEL, DEFAULT_LANGUAGE
 from file_handler import get_output_path, save_file
 from history import save_history
 
-def process_files_cli(selected_files):
+def process_files_cli(selected_files, progress_callback=None):
     """
     Обрабатывает файлы через командную строку, используя Whisper.
     """
@@ -11,13 +11,10 @@ def process_files_cli(selected_files):
         print("Ошибка: Не выбраны файлы для обработки.")
         return
 
-    for file_path in selected_files:
+    for idx, file_path in enumerate(selected_files):
         print(f"🟢 Обрабатываю файл: {file_path}")
 
-        # Определяем выходной путь
         output_path = get_output_path(file_path, "txt")
-
-        # Формируем команду для Whisper
         whisper_args = [
             "whisper", file_path,
             "--model", DEFAULT_MODEL,
@@ -27,7 +24,6 @@ def process_files_cli(selected_files):
 
         try:
             process = subprocess.run(whisper_args, text=True, capture_output=True)
-
             if process.returncode == 0:
                 save_file(output_path, process.stdout)
                 save_history(file_path, success=True)
@@ -39,3 +35,6 @@ def process_files_cli(selected_files):
         except Exception as e:
             print(f"❌ Ошибка запуска Whisper для {file_path}: {e}")
             save_history(file_path, success=False)
+
+        if progress_callback:
+            progress_callback((idx + 1) / len(selected_files))

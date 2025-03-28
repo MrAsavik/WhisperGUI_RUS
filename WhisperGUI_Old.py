@@ -86,8 +86,7 @@ class WhisperGUI(ctk.CTk):
 
     def select_files(self):
         files = filedialog.askopenfilenames(
-            filetypes=[("Аудио и видео", "*.wav *.mp3 *.mp4 *.mkv")]
-        )
+            filetypes=[("Аудио и видео", "*.wav *.mp3 *.mp4 *.mkv")])
         if files:
             self.selected_files = list(files)
             self.file_label.configure(text=f"Выбрано файлов: {len(self.selected_files)}")

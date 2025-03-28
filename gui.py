@@ -1,7 +1,9 @@
 import customtkinter as ctk
+import threading
 from tkinter import filedialog, scrolledtext
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
+
 
 class WhisperGUI(ctk.CTk):
     def __init__(self):
@@ -74,7 +76,9 @@ class WhisperGUI(ctk.CTk):
 
     def select_files(self):
         """Выбор файлов через диалоговое окно."""
-        files = filedialog.askopenfilenames(filetypes=[("Аудио и видео", "*.wav *.mp3 *.mp4 *.mkv" ".m4a" ".aac")])
+        files = filedialog.askopenfilenames(
+            filetypes=[("Аудио и видео", "*.wav *.mp3 *.mp4 *.mkv *.m4a *.aac *.ogg")]
+        )
         if files:
             self.selected_files = list(files)
             self.file_label.configure(text=f"Выбрано файлов: {len(self.selected_files)}")
@@ -85,13 +89,31 @@ class WhisperGUI(ctk.CTk):
         folder = filedialog.askdirectory()
         if folder:
             self.output_dir = folder
-            self.log(f"Папка сохранения: {folder}")
+            self.log(f"📁 Папка сохранения: {folder}")
 
     def process_files(self):
-        """Запускает обработку файлов."""
+        """Запускает обработку файлов в отдельном потоке."""
         if self.selected_files:
-            self.progress_var.set(0.5)
-            process_files_cli(self.selected_files)
+            self.progress_var.set(0)
+            self.process_button.configure(state="disabled")
+            self.stop_button.configure(state="normal")
+
+            thread = threading.Thread(target=self.run_processing)
+            thread.start()
+
+    def run_processing(self):
+        def update_progress(value):
+            self.progress_var.set(value)
+
+        try:
+            self.log("🚀 Начата обработка файлов...")
+            process_files_cli(self.selected_files, progress_callback=update_progress)
+            self.log("✅ Обработка завершена.")
+        except Exception as e:
+            self.log(f"❌ Ошибка: {e}")
+        finally:
+            self.process_button.configure(state="normal")
+            self.stop_button.configure(state="disabled")
             self.progress_var.set(1.0)
 
     def stop_process(self):
