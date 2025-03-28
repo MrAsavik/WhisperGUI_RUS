@@ -84,8 +84,16 @@ class WhisperGUI(ctk.CTk):
         self.bind_copy(self.log_text_dev)
 
     def bind_copy(self, widget):
-        """Позволяет копировать текст из любого текстового поля через Ctrl+C"""
-        widget.bind("<Control-c>", lambda event: widget.event_generate("<<Copy>>"))
+        """Позволяет копировать текст по Ctrl+C и Ctrl+С (английская и русская раскладки)"""
+        def on_ctrl_key(event):
+            if event.state & 0x4:  # Ctrl зажат
+                if event.keysym.lower() in ("c", "с"):  # латинская и русская
+                    widget.event_generate("<<Copy>>")
+
+        widget.bind("<KeyPress>", on_ctrl_key)
+
+
+
 
     def clear_file_list(self):
         self.selected_files.clear()
@@ -115,6 +123,7 @@ class WhisperGUI(ctk.CTk):
         if folder:
             self.output_dir = folder
             self.log(f"📁 Папка сохранения вручную выбрана: {self.output_dir}")
+    
 
     def process_files(self):
         if self.selected_files:
