@@ -16,5 +16,7 @@ DEFAULT_OUTPUT_DIR = BASE_DIR
 OUTPUT_FORMATS = ["txt", "srt", "vtt", "json"]
 
 # Настройки Whisper
+# Настройки по умолчанию
 DEFAULT_MODEL = "small"
-DEFAULT_LANGUAGE = "Russian"
+DEFAULT_LANGUAGE = "ru"
+OUTPUT_FORMATS = ["txt", "srt", "json"]

@@ -1,40 +1,44 @@
+import os
 import subprocess
-from config import DEFAULT_MODEL, DEFAULT_LANGUAGE
-from file_handler import get_output_path, save_file
-from history import save_history
+from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
 
-def process_files_cli(selected_files, progress_callback=None):
+def process_files_cli(file_paths, model=None, language=None, formats=None):
     """
-    Обрабатывает файлы через командную строку, используя Whisper.
+    Запускает CLI whisper для каждого файла и возвращает subprocess.Popen.
     """
-    if not selected_files:
-        print("Ошибка: Не выбраны файлы для обработки.")
-        return
+    model = model or DEFAULT_MODEL
+    language = language or DEFAULT_LANGUAGE
+    formats = formats or OUTPUT_FORMATS
 
-    for idx, file_path in enumerate(selected_files):
-        print(f"🟢 Обрабатываю файл: {file_path}")
+    # Определяем формат вывода
+    if len(formats) > 1:
+        output_format = "all"
+    elif formats:
+        output_format = formats[0]
+    else:
+        output_format = "txt"
 
-        output_path = get_output_path(file_path, "txt")
-        whisper_args = [
+    commands = []
+    for file_path in file_paths:
+        output_dir = os.path.dirname(file_path)
+        cmd = [
             "whisper", file_path,
-            "--model", DEFAULT_MODEL,
-            "--language", DEFAULT_LANGUAGE,
-            "--output_format", "txt"
+            "--model", model,
+            "--language", language,
+            "--output_format", output_format,
+            "--output_dir", output_dir
         ]
+        commands.append(cmd)
 
-        try:
-            process = subprocess.run(whisper_args, text=True, capture_output=True)
-            if process.returncode == 0:
-                save_file(output_path, process.stdout)
-                save_history(file_path, success=True)
-                print(f"✅ Файл успешно обработан: {output_path}")
-            else:
-                print(f"❌ Ошибка при обработке {file_path}: {process.stderr}")
-                save_history(file_path, success=False)
+    full_script = " && ".join(
+        " ".join(f'"{arg}"' if ' ' in arg else arg for arg in cmd)
+        for cmd in commands
+    )
 
-        except Exception as e:
-            print(f"❌ Ошибка запуска Whisper для {file_path}: {e}")
-            save_history(file_path, success=False)
-
-        if progress_callback:
-            progress_callback((idx + 1) / len(selected_files))
+    return subprocess.Popen(
+        full_script,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+    )

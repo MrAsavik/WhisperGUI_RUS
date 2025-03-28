@@ -10,6 +10,9 @@ import os
 class WhisperGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        self.current_process = None
+
         
         self.title("Whisper GUI Расширенный")
         self.geometry("900x700")
@@ -34,7 +37,10 @@ class WhisperGUI(ctk.CTk):
         
         self.main_tab = self.tabview.add("Главная")
         self.settings_tab = self.tabview.add("Настройки")
-        
+
+        self.clear_files_button = ctk.CTkButton(self.main_tab, text="Очистить список файлов", command=self.clear_file_list)
+        self.clear_files_button.pack(pady=5)
+
         self.create_main_tab()
         self.create_settings_tab()
 
@@ -76,6 +82,12 @@ class WhisperGUI(ctk.CTk):
 
         ctk.CTkButton(self.settings_tab, text="Выбрать папку для сохранения", command=self.select_folder).pack(pady=10)
 
+    def clear_file_list(self):
+        """Очищает список выбранных файлов."""
+        self.selected_files.clear()
+        self.file_label.configure(text="Файлы не выбраны")
+        self.process_button.configure(state="disabled")
+        self.log("🗑️ Список файлов очищен.")
 
 
     def select_files(self):
@@ -114,12 +126,33 @@ class WhisperGUI(ctk.CTk):
             thread.start()
 
     def run_processing(self):
+        """Внутренний запуск обработки с параметрами из GUI."""
         def update_progress(value):
             self.progress_var.set(value)
 
+        # Считываем параметры из GUI
+        model = self.model_var.get()
+        language = self.language_var.get().lower()
+        formats = [fmt for fmt, var in self.selected_formats.items() if var.get()]
+
         try:
             self.log("🚀 Начата обработка файлов...")
-            process_files_cli(self.selected_files, progress_callback=update_progress)
+
+            self.current_process = process_files_cli(
+                self.selected_files,
+                model=self.model_var.get(),
+                language=self.language_var.get(),
+                formats=[fmt for fmt, var in self.selected_formats.items() if var.get()]
+            )
+
+            for line in self.current_process.stdout:
+                line = line.strip()
+                self.log(line)
+                self.update()
+
+            self.current_process.wait()
+            self.current_process = None
+
             self.log("✅ Обработка завершена.")
         except Exception as e:
             self.log(f"❌ Ошибка: {e}")
@@ -128,9 +161,16 @@ class WhisperGUI(ctk.CTk):
             self.stop_button.configure(state="disabled")
             self.progress_var.set(1.0)
 
+
+
     def stop_process(self):
-        """Останавливает текущий процесс (заглушка)."""
-        self.log("⛔ Остановка процесса... (Функция ещё не реализована)")
+        if self.current_process:
+            self.current_process.terminate()
+            self.log("🛑 Процесс остановлен вручную.")
+            self.current_process = None
+        else:
+            self.log("⚠️ Нет активного процесса.")
+
 
     def log(self, message: str):
         """Выводит сообщение в лог в GUI."""
