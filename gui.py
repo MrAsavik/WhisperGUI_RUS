@@ -7,7 +7,18 @@ from tkinter import filedialog, scrolledtext, messagebox
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
 from power import prevent_sleep, allow_sleep
-
+def kill_process_tree(pid):
+    """
+    Принудительно завершает процесс и всех его дочерних.
+    Используется для полной остановки whisper.exe из subprocess.
+    """
+    try:
+        parent = psutil.Process(pid)
+        for child in parent.children(recursive=True):
+            child.kill()
+        parent.kill()
+    except psutil.NoSuchProcess:
+        pass
 
 class WhisperGUI(ctk.CTk):
     def __init__(self):
@@ -161,8 +172,9 @@ class WhisperGUI(ctk.CTk):
 
     def stop_process(self):
         if self.current_process:
-            self.current_process.terminate()
-            self.log("🛑 Процесс остановлен вручную.")
+            pid = self.current_process.pid
+            kill_process_tree(pid)
+            self.log("🛑 Процесс полностью остановлен.")
             self.current_process = None
         else:
             self.log("⚠️ Нет активного процесса.")
