@@ -133,7 +133,7 @@ class WhisperGUI(ctk.CTk):
                 self.log(f"🚀 Turbo-режим активен: потоков = {threads}")
 
             self.current_process = process_files_cli(
-                self.selected_files, model=model, language=language, formats=formats, threads=threads
+                self.selected_files, model=model, language=language, formats=formats, threads=threads, log_callback=self.log
             )
             threading.Thread(target=self.monitor_cpu, daemon=True).start()
 

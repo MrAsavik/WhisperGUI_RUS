@@ -19,7 +19,7 @@ def check_output_file(output_dir, base_filename, extensions):
     ]
 
 
-def process_files_cli(file_paths, model=None, language=None, formats=None, threads=None):
+def process_files_cli(file_paths, model=None, language=None, formats=None, threads=None, log_callback=None):
     """
     Запускает CLI whisper для каждого файла и возвращает subprocess.Popen.
 
@@ -28,6 +28,7 @@ def process_files_cli(file_paths, model=None, language=None, formats=None, threa
     :param language: Язык распознавания (по умолчанию из config)
     :param formats: Список форматов вывода (по умолчанию из config)
     :param threads: Количество потоков (опционально)
+    :param log_callback: Функция логирования (например, log из gui.py)
     :return: subprocess.Popen для всей команды
     """
     model = model or DEFAULT_MODEL
@@ -57,6 +58,16 @@ def process_files_cli(file_paths, model=None, language=None, formats=None, threa
         " ".join(f'"{arg}"' if ' ' in arg or '\\' in arg else arg for arg in cmd)
         for cmd in commands
     )
+
+    # Проверка на наличие потенциально проблемных символов
+    for file_path in file_paths:
+        try:
+            file_path.encode('utf-8')
+        except UnicodeEncodeError:
+            warning = f"⚠️ Файл может быть пропущен из-за проблем с кодировкой: {file_path}"
+            print(warning)
+            if log_callback:
+                log_callback(warning)
 
     # subprocess с указанием кодировки utf-8, чтобы избежать UnicodeEncodeError
     return subprocess.Popen(
