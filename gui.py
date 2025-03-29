@@ -3,6 +3,7 @@ import threading
 from tkinter import filedialog, scrolledtext
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
+from tkinter import messagebox
 from power import prevent_sleep, allow_sleep
 
 import os
@@ -200,6 +201,11 @@ class WhisperGUI(ctk.CTk):
         self.log_text_dev.delete(1.0, 'end')
 
     def on_close(self):
+        if self.current_process:
+            if not messagebox.askyesno("Подтверждение", "🚧 Идёт распознавание.\nВыйти и прервать процесс?"):
+                return
+            else:
+                self.stop_process()
         self.log("Закрытие приложения...")
         self.destroy()
 
