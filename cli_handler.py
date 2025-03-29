@@ -19,7 +19,7 @@ def check_output_file(output_dir, base_filename, extensions):
             found_files.append(path)
     return found_files
 
-def process_files_cli(file_paths, model=None, language=None, formats=None):
+def process_files_cli(file_paths, model=None, language=None, formats=None, threads=None):
     """
     Запускает CLI whisper для каждого файла и возвращает subprocess.Popen.
     """
@@ -38,6 +38,7 @@ def process_files_cli(file_paths, model=None, language=None, formats=None):
     commands = []
     for file_path in file_paths:
         output_dir = os.path.dirname(file_path)
+        
         cmd = [
             "whisper", file_path,
             "--model", model,
@@ -45,7 +46,10 @@ def process_files_cli(file_paths, model=None, language=None, formats=None):
             "--output_format", output_format,
             "--output_dir", output_dir
         ]
+        if threads:
+            cmd.extend(["--threads", str(threads)])
         commands.append(cmd)
+        
 
     full_script = " && ".join(
         " ".join(f'"{arg}"' if ' ' in arg else arg for arg in cmd)

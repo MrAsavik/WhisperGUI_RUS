@@ -5,6 +5,8 @@ from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
 from tkinter import messagebox
 from power import prevent_sleep, allow_sleep
+import psutil
+import time
 
 import os
 
@@ -12,11 +14,17 @@ class WhisperGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        process = self.current_process
         self.current_process = None
+        if process:
+            process.wait()
+
 
         self.title("Whisper GUI Расширенный")
         self.geometry("900x700")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        self.turbo_var = ctk.BooleanVar(value=False) #
 
         # --- Переменные состояния ---
         self.selected_files = []
@@ -61,6 +69,10 @@ class WhisperGUI(ctk.CTk):
         self.progress_bar.pack(pady=10)
         self.progress_var.set(0)
 
+        self.status_label = ctk.CTkLabel(self.main_tab, text="⚪ Ожидание...", anchor='w')
+        self.status_label.pack(pady=5)
+
+
         self.log_text_main = scrolledtext.ScrolledText(self.main_tab, wrap='word', width=80, height=10)
         self.log_text_main.pack(pady=10)
         self.bind_copy(self.log_text_main)
@@ -81,6 +93,12 @@ class WhisperGUI(ctk.CTk):
 
         ctk.CTkButton(self.settings_tab, text="Выбрать папку для сохранения", command=self.select_folder).pack(pady=10)
 
+        ctk.CTkLabel(self.settings_tab, text="Дополнительно:").pack(pady=10)
+        ctk.CTkCheckBox(
+            self.settings_tab,
+            text="🌙 Turbo-режим (ночная высокая нагрузка CPU)",
+            variable=self.turbo_var).pack(anchor='w', padx=20)
+
     def create_dev_tab(self):
         self.log_text_dev = scrolledtext.ScrolledText(self.dev_tab, wrap='word', width=110, height=35)
         self.log_text_dev.pack(pady=10, padx=10, expand=True, fill='both')
@@ -95,6 +113,14 @@ class WhisperGUI(ctk.CTk):
 
         widget.bind("<KeyPress>", on_ctrl_key)
 
+    def monitor_cpu(self):
+        """
+        🧠 Мониторинг загрузки CPU в статусе — пока идёт обработка.
+        """
+        while self.current_process:
+            cpu = psutil.cpu_percent(interval=1)
+            self.status_label.configure(text=f"🧠 CPU: {cpu}% | Turbo: {'Да' if self.turbo_var.get() else 'Нет'}")
+        time.sleep(5)
 
 
 
@@ -148,14 +174,23 @@ class WhisperGUI(ctk.CTk):
 
             
             self.log("🚀 Начата обработка файлов...")
+            threads = os.cpu_count() if self.turbo_var.get() else None
+            if threads:
+                self.log(f"🚀 Turbo-режим активен: потоков = {threads}")
+                
+
 
 
             self.current_process = process_files_cli(
                 self.selected_files,
                 model=model,
                 language=language,
-                formats=formats
+                formats=formats,
+                threads=threads
             )
+            cpu_thread = threading.Thread(target=self.monitor_cpu)
+            cpu_thread.start()
+
 
             for line in self.current_process.stdout:
                 line = line.strip()
