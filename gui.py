@@ -7,11 +7,8 @@ from tkinter import filedialog, scrolledtext, messagebox
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
 from power import prevent_sleep, allow_sleep
+
 def kill_process_tree(pid):
-    """
-    Принудительно завершает процесс и всех его дочерних.
-    Используется для полной остановки whisper.exe из subprocess.
-    """
     try:
         parent = psutil.Process(pid)
         for child in parent.children(recursive=True):
@@ -27,7 +24,6 @@ class WhisperGUI(ctk.CTk):
         self.geometry("900x700")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # --- Переменные состояния ---
         self.selected_files = []
         self.output_dir = ""
         self.current_process = None
@@ -48,7 +44,6 @@ class WhisperGUI(ctk.CTk):
         self.settings_tab = self.tabview.add("Настройки")
         self.dev_tab = self.tabview.add("Разработчику")
 
-        # Главная вкладка
         ctk.CTkButton(self.main_tab, text="Очистить список файлов", command=self.clear_file_list).pack(pady=5)
         self.file_label = ctk.CTkLabel(self.main_tab, text="Файлы не выбраны")
         self.file_label.pack(pady=10)
@@ -72,7 +67,6 @@ class WhisperGUI(ctk.CTk):
 
         ctk.CTkButton(self.main_tab, text="Очистить лог", command=self.clear_log).pack(pady=5)
 
-        # Настройки
         ctk.CTkLabel(self.settings_tab, text="Модель Whisper:").pack(pady=5)
         ctk.CTkOptionMenu(self.settings_tab, values=["tiny", "small", "medium", "large"], variable=self.model_var).pack()
         ctk.CTkLabel(self.settings_tab, text="Язык:").pack(pady=5)
@@ -86,7 +80,6 @@ class WhisperGUI(ctk.CTk):
         ctk.CTkLabel(self.settings_tab, text="Дополнительно:").pack(pady=10)
         ctk.CTkCheckBox(self.settings_tab, text="🌙 Turbo-режим (ночная высокая нагрузка CPU)", variable=self.turbo_var).pack(anchor='w', padx=20)
 
-        # Dev вкладка
         self.log_text_dev = scrolledtext.ScrolledText(self.dev_tab, wrap='word', width=110, height=35)
         self.log_text_dev.pack(pady=10, padx=10, expand=True, fill='both')
         self.bind_copy(self.log_text_dev)
@@ -144,9 +137,10 @@ class WhisperGUI(ctk.CTk):
                 self.log(f"🚀 Turbo-режим активен: потоков = {threads}")
 
             self.current_process = process_files_cli(
-                self.selected_files, model=model, language=language, formats=formats, threads=threads, log_callback=self.log
+                self.selected_files, model=model, language=language, formats=formats, threads=threads
             )
-            threading.Thread(target=self.monitor_cpu, daemon=True).start()
+
+            self.after(1000, self.update_cpu_status)
 
             for line in self.current_process.stdout:
                 line = line.strip()
@@ -170,6 +164,12 @@ class WhisperGUI(ctk.CTk):
             allow_sleep()
             self.log("🌙 Сон снова разрешён.")
 
+    def update_cpu_status(self):
+        if self.current_process:
+            cpu = psutil.cpu_percent(interval=None)
+            self.status_label.configure(text=f"🧠 CPU: {cpu:.1f}% | Turbo: {'Да' if self.turbo_var.get() else 'Нет'}")
+            self.after(1000, self.update_cpu_status)
+
     def stop_process(self):
         if self.current_process:
             pid = self.current_process.pid
@@ -178,13 +178,6 @@ class WhisperGUI(ctk.CTk):
             self.current_process = None
         else:
             self.log("⚠️ Нет активного процесса.")
-
-    def monitor_cpu(self):
-        while self.current_process:
-            cpu = psutil.cpu_percent(interval=1)
-            status = f"🧠 CPU: {cpu}% | Turbo: {'Да' if self.turbo_var.get() else 'Нет'}"
-            self.status_label.configure(text=status)
-            time.sleep(2)
 
     def log(self, message):
         self.log_messages.append(message)
@@ -209,7 +202,6 @@ class WhisperGUI(ctk.CTk):
                 self.stop_process()
         self.log("Закрытие приложения...")
         self.destroy()
-
 
 if __name__ == "__main__":
     app = WhisperGUI()
