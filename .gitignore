@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.log
+*.tmp
+*.spec
+build/
+dist/
+history.json
+whispergui_dev.log
+.env

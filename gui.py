@@ -3,6 +3,8 @@ import threading
 from tkinter import filedialog, scrolledtext
 from cli_handler import process_files_cli
 from config import DEFAULT_MODEL, DEFAULT_LANGUAGE, OUTPUT_FORMATS
+from power import prevent_sleep, allow_sleep
+
 import os
 
 class WhisperGUI(ctk.CTk):
@@ -140,7 +142,12 @@ class WhisperGUI(ctk.CTk):
         formats = [fmt for fmt, var in self.selected_formats.items() if var.get()]
 
         try:
+            prevent_sleep()
+            self.log("🔋 Блокировка сна активирована.")
+
+            
             self.log("🚀 Начата обработка файлов...")
+
 
             self.current_process = process_files_cli(
                 self.selected_files,
@@ -166,6 +173,8 @@ class WhisperGUI(ctk.CTk):
             self.process_button.configure(state="normal")
             self.stop_button.configure(state="disabled")
             self.progress_var.set(1.0)
+            allow_sleep()
+            self.log("🌙 Сон снова разрешён.")
 
     def stop_process(self):
         if self.current_process:
