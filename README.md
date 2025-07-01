@@ -3,7 +3,7 @@
 **WhisperGUI_RUS** — это моё локальное приложение с графическим интерфейсом для распознавания речи, основанное на OpenAI Whisper.  
 Я разработал его, чтобы удобно расшифровывать аудио и видео **на ноутбуке без видеокарты**, без зависимости от платных облачных сервисов.
 
-> Версия: **0.1.0**  
+> Версия: **0.2.1**  
 > Дата: **2025-03-29**
 
 ---
@@ -36,7 +36,7 @@
 
 ```bash
 pip install -r requirements.txt
-pip install git+https://github.com/openai/whisper.git
+pip install https://github.com/MrAsavik/WhisperGUI_RUS.git
 python main.py
 ```
 

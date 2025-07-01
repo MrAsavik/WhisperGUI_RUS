@@ -13,6 +13,7 @@ from monitor import start_cpu_monitor
 from log_utils import log, dev_log
 from ui_utils import bind_copy
 from handlers import kill_process_tree
+from updater import CURRENT_VERSION
 
 
 
@@ -34,9 +35,23 @@ class WhisperGUI(ctk.CTk):
         self.turbo_var = ctk.BooleanVar(value=False)
         self.progress_var = ctk.DoubleVar()
         self.log_messages = []
+        
 
         # 📦 Интерфейс
         build_ui(self)
+        # внизу правого угла — версия приложения
+        self.version_label = ctk.CTkLabel(
+            self,
+            text=f"v{CURRENT_VERSION}",
+            text_color="gray",
+            fg_color=None
+        )
+        self.version_label.place(
+            relx=1.0, rely=1.0,    # правый нижний угол окна
+            x=-10, y=-10,          # отступ 10px от границ
+            anchor="se"            # South-East (юго-восток)
+        )
+
 
     def clear_file_list(self):
         self.selected_files.clear()

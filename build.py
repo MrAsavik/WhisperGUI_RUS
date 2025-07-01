@@ -5,6 +5,16 @@ import zipfile
 import datetime
 import re
 import time
+import subprocess, sys
+
+def ensure_reqs():
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+
+if __name__ == '__main__':
+    ensure_reqs()
+    
+
 
 PROJECT_NAME = "WhisperGUI_RUS"
 MAIN_SCRIPT = "main.py"

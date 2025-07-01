@@ -1,2 +1,6 @@
+requests
 customtkinter
 openai-whisper
+psutil
+pyinstaller
+
