@@ -48,6 +48,7 @@ def build_exe():
         "pyinstaller",
         "--onefile",
         "--windowed",
+        "--add-data", "CHANGELOG.md;.",
         "--name", PROJECT_NAME,
         MAIN_SCRIPT
     ], check=True)
