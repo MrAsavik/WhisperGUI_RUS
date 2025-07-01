@@ -3,63 +3,117 @@ import os
 import threading
 import subprocess
 import importlib
+import tkinter as tk
+from tkinter import ttk, messagebox
+
 import customtkinter as ctk
 from gui import WhisperGUI
 from cli_handler import process_files_cli
 from updater import check_update
 
-def ensure_whisper():
+
+def ensure_whisper_ui():
     """
-    Проверяет, доступен ли модуль whisper.
-    Если нет — показывает окно с прогресс-баром и устанавливает его.
+    Отображает модальное окно с индикатором установки openai-whisper
+    и устанавливает пакет в фоне, если его нет.
     """
     try:
-        importlib.import_module("whisper")
-        return  # всё ок
+        import whisper
+        return
     except ImportError:
         pass
 
-    # Создаём окно-сплэш с прогрессбаром
-    splash = ctk.CTk()
+    # создаём splash для установки
+    splash = tk.Tk()
     splash.title("Установка зависимостей")
-    splash.geometry("400x100")
+    splash.geometry("350x100")
     splash.resizable(False, False)
 
-    label = ctk.CTkLabel(splash, text="Устанавливаем openai-whisper...\nПожалуйста, подождите")
-    label.pack(pady=(20, 5))
+    lbl = tk.Label(splash, text="Устанавливаем openai-whisper...", anchor="center")
+    lbl.pack(expand=True, pady=(20, 5))
 
-    progress = ctk.CTkProgressBar(splash, orientation="horizontal", mode="indeterminate")
-    progress.pack(fill="x", padx=20, pady=(0, 20))
-    progress.start(10)
+    bar = ttk.Progressbar(splash, mode="indeterminate")
+    bar.pack(fill="x", padx=20)
+    bar.start(10)
 
-    def install():
-        # Запускаем pip install внутри той же среды
-        subprocess.run([sys.executable, "-m", "pip", "install", "openai-whisper"], check=True)
-        # после установки можно закрыть сплэш
-        splash.destroy()
+    def worker():
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "openai-whisper"])
+            lbl.config(text="Установка завершена.")
+        except Exception as e:
+            lbl.config(text=f"Ошибка установки: {e}")
+        finally:
+            bar.stop()
+            splash.after(500, splash.destroy)
 
-    # Установка в фоне, чтобы не блокировать GUI-цикл
-    threading.Thread(target=install, daemon=True).start()
+    threading.Thread(target=worker, daemon=True).start()
     splash.mainloop()
 
+
+def check_updates_ui():
+    """
+    Отображает простое модальное окно tkinter для проверки обновлений.
+    """
+    result = {'value': None}
+
+    splash = tk.Tk()
+    splash.title("Проверка обновлений")
+    splash.geometry("300x100")
+    splash.resizable(False, False)
+
+    lbl = tk.Label(splash, text="Идёт проверка обновлений...", anchor="center")
+    lbl.pack(expand=True, pady=(20, 5))
+
+    bar = ttk.Progressbar(splash, mode="indeterminate")
+    bar.pack(fill="x", padx=20)
+    bar.start(10)
+
+    def worker():
+        try:
+            res = check_update()
+        except Exception as e:
+            res = e
+        result['value'] = res
+        splash.quit()
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    splash.mainloop()
+    try:
+        bar.stop()
+    except:
+        pass
+    splash.destroy()
+
+    res = result.get('value')
+    if isinstance(res, Exception):
+        messagebox.showerror("Ошибка обновления", str(res))
+    elif res is False:
+        messagebox.showinfo("Обновления", "Обновлений нет")
+    # при успешном обновлении check_update() завершит процесс
+
+
 if __name__ == '__main__':
+    # кириллица в консоли Windows
     if os.name == 'nt':
         os.system('chcp 65001 >nul')
-        sys.stdout.reconfigure(encoding='utf-8')
+        if hasattr(sys.stdout, 'reconfigure'):
+            try:
+                sys.stdout.reconfigure(encoding='utf-8')
+            except:
+                pass
 
-    # 1) Авто-установка whisper
-    ensure_whisper()
+    # 1. Убедимся, что whisper установлен
+    ensure_whisper_ui()
 
-    # 2) CLI-режим
+    # 2. CLI режим
     if '--cli' in sys.argv:
         process_files_cli()
-    else:
-        # 3) Авто-обновление
-        try:
-            check_update()
-        except Exception:
-            pass
+        sys.exit(0)
 
-        # 4) Запуск GUI
-        app = WhisperGUI()
-        app.mainloop()
+    # 3. Проверка обновлений
+    check_updates_ui()
+
+    # 4. Запуск GUI
+    app = WhisperGUI()
+    app.mainloop()

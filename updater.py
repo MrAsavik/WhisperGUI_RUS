@@ -6,6 +6,14 @@ import re
 
 # Ваш GitHub-репозиторий в формате owner/repo
 GITHUB_REPO = "MrAsavik/WhisperGUI_RUS"
+def version_tuple(ver: str):
+    return tuple(int(x) for x in ver.split("."))
+
+def should_update(current: str, latest: str) -> bool:
+    return version_tuple(latest) > version_tuple(current)
+
+# …
+
 
 
 def get_current_version():
@@ -27,19 +35,20 @@ CURRENT_VERSION = get_current_version()
 
 
 def check_update():
-    """
-    Проверяет GitHub Releases на наличие новой версии.
-    Если найдёт, скачает .exe и запустит его, после чего текущий процесс завершится.
-    """
     api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
     resp = requests.get(api_url)
     if resp.status_code != 200:
         return False
-
     data = resp.json()
+
     latest_tag = data.get("tag_name", "").lstrip("v")
-    if latest_tag == CURRENT_VERSION:
-        return False  # обновлений нет
+    print(f"[upd] Current: {CURRENT_VERSION}, latest: {latest_tag}")
+    if not should_update(CURRENT_VERSION, latest_tag):
+        print("[upd] Обновление не требуется.")
+        return False
+
+    # … дальше скачиваем ассет
+
 
     # Ищем .exe среди ассетов
     asset = next((a for a in data.get("assets", []) if a["name"].endswith(".exe")), None)
